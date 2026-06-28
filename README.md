@@ -1,4 +1,4 @@
-# Copilot Agent: Metadata Cleaner & Editor
+# Metadata Cleaner & Editor (v0_1)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white)
@@ -13,7 +13,7 @@
 
 Every `.docx`, `.pptx`, `.xlsx`, and `.pdf` file carries invisible metadata: author names, company identifiers, revision history, internal keywords, and more. This information often travels with a document long after it should — to clients, regulators, or the public.
 
-**Copilot Agent: Metadata Cleaner & Editor** lets you:
+**Metadata Cleaner & Editor** lets you:
 
 - **Drag and drop** a file to instantly extract all its embedded properties
 - **Review and edit** every metadata field in a clean form

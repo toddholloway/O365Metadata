@@ -1,5 +1,5 @@
 <!--
-  Copilot Agent: Metadata Cleaner & Editor
+  Metadata Cleaner & Editor v0_1
   Copyright (c) 2026 Todd Holloway
 
   MIT License
@@ -27,8 +27,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Copilot Agent – Metadata Cleaner &amp; Editor</title>
+    <title>Metadata Cleaner &amp; Editor v0_1</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -230,7 +231,8 @@
         }
 
         .form-field input,
-        .form-field select {
+        .form-field select,
+        .form-field textarea {
             width: 100%;
             padding: 0.5rem 0.75rem;
             border: 1px solid #d1d5db;
@@ -243,13 +245,48 @@
             transition: border-color 0.15s, box-shadow 0.15s;
         }
 
+        .form-field textarea {
+            resize: vertical;
+            min-height: 68px;
+            line-height: 1.5;
+        }
+
         .form-field input:focus,
-        .form-field select:focus {
+        .form-field select:focus,
+        .form-field textarea:focus {
             border-color: #5c6bc0;
             box-shadow: 0 0 0 3px rgba(92,107,192,0.12);
         }
 
-        .form-field input::placeholder { color: #c4c4cc; }
+        .form-field input::placeholder,
+        .form-field textarea::placeholder { color: #c4c4cc; }
+
+        /* Field that spans both columns */
+        .form-field.span-2 { grid-column: 1 / -1; }
+
+        /* Section divider within the grid */
+        .form-divider {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 0.25rem;
+        }
+
+        .form-divider span {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #9fa8da;
+            white-space: nowrap;
+        }
+
+        .form-divider hr {
+            flex: 1;
+            border: none;
+            border-top: 1px solid #e8eaf6;
+        }
 
         /* ── Action row ──────────────────────────────────── */
         .action-row {
@@ -378,6 +415,7 @@
             .template-row { margin: 0 1.25rem 1.25rem; flex-wrap: wrap; }
             .form-section { padding: 0 1.25rem 0.75rem; }
             .form-grid { grid-template-columns: 1fr; gap: 0.875rem; }
+            .form-field.span-2 { grid-column: 1; }
             .action-row { padding: 1rem 1.25rem 1.25rem; }
             .template-hint { display: none; }
         }
@@ -392,8 +430,8 @@
     <!-- ── Header ───────────────────────────────────────── -->
     <header class="app-header">
         <div class="header-text">
-            <h1>Copilot Agent</h1>
-            <p>Metadata Cleaner &amp; Editor</p>
+            <h1>Metadata Cleaner &amp; Editor</h1>
+            <p>v0_1</p>
         </div>
         <!-- Robot avatar -->
         <svg class="avatar" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -495,31 +533,41 @@
         <p class="form-sub">Review and update the document properties below.</p>
 
         <div class="form-grid">
-            <!-- Row 1 -->
+
+            <!-- ── Core identity ── -->
             <div class="form-field">
                 <label for="f-title">Title:</label>
                 <input type="text" id="f-title" placeholder="Document title">
+            </div>
+            <div class="form-field">
+                <label for="f-subject">Subject:</label>
+                <input type="text" id="f-subject" placeholder="Document subject or topic">
+            </div>
+
+            <div class="form-field">
+                <label for="f-author">Author:</label>
+                <input type="text" id="f-author" placeholder="Author name">
             </div>
             <div class="form-field">
                 <label for="f-keywords">Keywords:</label>
                 <input type="text" id="f-keywords" placeholder="keyword1, keyword2">
             </div>
 
-            <!-- Row 2 -->
-            <div class="form-field">
-                <label for="f-author">Author:</label>
-                <input type="text" id="f-author" placeholder="Author name">
-            </div>
-            <div class="form-field">
-                <label for="f-created">Created Date:</label>
-                <input type="date" id="f-created">
-            </div>
+            <!-- ── Organization ── -->
+            <div class="form-divider"><span>Organization</span><hr></div>
 
-            <!-- Row 3 -->
             <div class="form-field">
                 <label for="f-company">Company:</label>
                 <input type="text" id="f-company" placeholder="Organization name">
             </div>
+            <div class="form-field">
+                <label for="f-manager">Manager:</label>
+                <input type="text" id="f-manager" placeholder="Manager name">
+            </div>
+
+            <!-- ── Classification ── -->
+            <div class="form-divider"><span>Classification</span><hr></div>
+
             <div class="form-field">
                 <label for="f-category">Category:</label>
                 <select id="f-category">
@@ -533,18 +581,6 @@
                     <option value="Technical">Technical</option>
                 </select>
             </div>
-
-            <!-- Row 4 -->
-            <div class="form-field">
-                <label for="f-manager">Manager:</label>
-                <input type="text" id="f-manager" placeholder="Manager name">
-            </div>
-            <div class="form-field">
-                <label for="f-revision">Revision Number:</label>
-                <input type="text" id="f-revision" placeholder="e.g. 3">
-            </div>
-
-            <!-- Row 5 -->
             <div class="form-field">
                 <label for="f-status">Status:</label>
                 <select id="f-status">
@@ -556,10 +592,45 @@
                     <option value="Archived">Archived</option>
                 </select>
             </div>
+
             <div class="form-field">
                 <label for="f-copyright">Copyright:</label>
                 <input type="text" id="f-copyright" placeholder="© 2026 Company Name">
             </div>
+            <div class="form-field">
+                <label for="f-revision">Revision Number:</label>
+                <input type="text" id="f-revision" placeholder="e.g. 3">
+            </div>
+
+            <!-- ── Dates & tracking ── -->
+            <div class="form-divider"><span>Dates &amp; Tracking</span><hr></div>
+
+            <div class="form-field">
+                <label for="f-created">Created Date:</label>
+                <input type="date" id="f-created">
+            </div>
+            <div class="form-field">
+                <label for="f-lastmodby">Last Modified By:</label>
+                <input type="text" id="f-lastmodby" placeholder="Username or name">
+            </div>
+
+            <!-- ── Software fingerprint ── -->
+            <div class="form-divider"><span>Software Fingerprint</span><hr></div>
+
+            <div class="form-field">
+                <label for="f-producer">Producer / App:</label>
+                <input type="text" id="f-producer" placeholder="e.g. Microsoft Word, Adobe Acrobat">
+            </div>
+            <div class="form-field"><!-- spacer --></div>
+
+            <!-- ── Description (full-width) ── -->
+            <div class="form-divider"><span>Description</span><hr></div>
+
+            <div class="form-field span-2">
+                <label for="f-description">Description / Comments:</label>
+                <textarea id="f-description" placeholder="Internal notes, summary, or comments embedded in the file"></textarea>
+            </div>
+
         </div>
     </div>
 
@@ -598,7 +669,7 @@
 </div><!-- /card -->
 
 <p style="text-align:center;margin-top:1.25rem;font-size:11px;color:#9fa8da;letter-spacing:0.04em;">
-    Copilot Agent: Metadata Cleaner &amp; Editor &nbsp;·&nbsp; MIT License &nbsp;·&nbsp; Copyright &copy; 2026 Todd Holloway
+    Metadata Cleaner &amp; Editor v0_1 &nbsp;·&nbsp; MIT License &nbsp;·&nbsp; Copyright &copy; 2026 Todd Holloway
 </p>
 
 <script>
@@ -606,11 +677,12 @@
 let currentFile = null;
 let currentZip  = null;
 let fileType    = null;
+let pdfBytes    = null; // raw ArrayBuffer for the loaded PDF
 
 // ── Templates ──────────────────────────────────────────────
 const TEMPLATES = {
-    't1': { company: '', author: '', manager: '', copyright: '', status: 'Final',  category: 'Business'  },
-    't2': { company: '', author: '', manager: '', copyright: '', status: 'Draft',  category: 'Internal'  },
+    't1': { company: '', author: '', manager: '', copyright: '', status: 'Final',  category: 'Business' },
+    't2': { company: '', author: '', manager: '', copyright: '', status: 'Draft',  category: 'Internal' },
 };
 
 const FILE_META = {
@@ -621,8 +693,8 @@ const FILE_META = {
 };
 
 function formatSize(bytes) {
-    if (bytes < 1024)        return `${bytes} B`;
-    if (bytes < 1048576)     return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024)    return `${bytes} B`;
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
@@ -663,6 +735,7 @@ async function processFile(file) {
 
     currentFile = file;
     fileType    = ext;
+    pdfBytes    = null;
 
     let metadata = {};
     try {
@@ -671,7 +744,9 @@ async function processFile(file) {
             currentZip = result.zip;
             metadata   = result.metadata;
         } else {
-            metadata = await extractPDF(file);
+            const result = await extractPDF(file);
+            pdfBytes = result.bytes;
+            metadata = result.metadata;
         }
     } catch (err) {
         console.warn('Metadata extraction failed:', err);
@@ -693,21 +768,25 @@ async function extractOOXML(file) {
     const coreFile = zip.file('docProps/core.xml');
     if (coreFile) {
         const doc = new DOMParser().parseFromString(await coreFile.async('text'), 'text/xml');
-        metadata.title     = xmlVal(doc, 'title');
-        metadata.author    = xmlVal(doc, 'creator');
-        metadata.keywords  = xmlVal(doc, 'keywords');
-        metadata.created   = xmlVal(doc, 'created');
-        metadata.category  = xmlVal(doc, 'category');
-        metadata.revision  = xmlVal(doc, 'revision');
-        metadata.status    = xmlVal(doc, 'contentStatus');
-        metadata.copyright = xmlVal(doc, 'rights');
+        metadata.title       = xmlVal(doc, 'title');
+        metadata.subject     = xmlVal(doc, 'subject');
+        metadata.author      = xmlVal(doc, 'creator');
+        metadata.keywords    = xmlVal(doc, 'keywords');
+        metadata.description = xmlVal(doc, 'description');
+        metadata.created     = xmlVal(doc, 'created');
+        metadata.category    = xmlVal(doc, 'category');
+        metadata.revision    = xmlVal(doc, 'revision');
+        metadata.status      = xmlVal(doc, 'contentStatus');
+        metadata.copyright   = xmlVal(doc, 'rights');
+        metadata.lastModBy   = xmlVal(doc, 'lastModifiedBy');
     }
 
     const appFile = zip.file('docProps/app.xml');
     if (appFile) {
         const doc = new DOMParser().parseFromString(await appFile.async('text'), 'text/xml');
-        metadata.company = xmlVal(doc, 'Company');
-        metadata.manager = xmlVal(doc, 'Manager');
+        metadata.company  = xmlVal(doc, 'Company');
+        metadata.manager  = xmlVal(doc, 'Manager');
+        metadata.producer = xmlVal(doc, 'Application');
     }
 
     return { zip, metadata };
@@ -720,40 +799,50 @@ function xmlVal(doc, localName) {
     return '';
 }
 
-// ── PDF extraction (header scan) ────────────────────────────
+// ── PDF extraction via pdf-lib ──────────────────────────────
 async function extractPDF(file) {
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const text = e.target.result;
-            const grab = (rx) => { const m = text.match(rx); return m ? m[1] : ''; };
-            resolve({
-                title:    grab(/\/Title\s*\(([^)]*)\)/),
-                author:   grab(/\/Author\s*\(([^)]*)\)/) || grab(/\/Creator\s*\(([^)]*)\)/),
-                keywords: grab(/\/Keywords\s*\(([^)]*)\)/),
-                company:  grab(/\/Company\s*\(([^)]*)\)/),
-            });
-        };
-        reader.readAsText(file, 'latin1');
-    });
+    const bytes = await file.arrayBuffer();
+    const { PDFDocument } = PDFLib;
+    const pdfDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+
+    const created = pdfDoc.getCreationDate();
+
+    const metadata = {
+        title:       pdfDoc.getTitle()    || '',
+        author:      pdfDoc.getAuthor()   || '',
+        subject:     pdfDoc.getSubject()  || '',
+        keywords:    pdfDoc.getKeywords() || '',
+        description: pdfDoc.getSubject()  || '', // PDF has no separate description; subject doubles
+        producer:    pdfDoc.getProducer() || '',
+        creator_app: pdfDoc.getCreator()  || '',
+        created:     created ? created.toISOString() : '',
+    };
+
+    // Use Creator as producer label if Producer is empty (some PDFs only set one)
+    if (!metadata.producer && metadata.creator_app) metadata.producer = metadata.creator_app;
+
+    return { bytes, metadata };
 }
 
 // ── Form helpers ────────────────────────────────────────────
 function populateForm(m) {
     const textMap = {
-        'f-title':     m.title,
-        'f-author':    m.author,
-        'f-company':   m.company,
-        'f-manager':   m.manager,
-        'f-keywords':  m.keywords,
-        'f-revision':  m.revision,
-        'f-copyright': m.copyright,
+        'f-title':       m.title,
+        'f-subject':     m.subject,
+        'f-author':      m.author,
+        'f-company':     m.company,
+        'f-manager':     m.manager,
+        'f-keywords':    m.keywords,
+        'f-revision':    m.revision,
+        'f-copyright':   m.copyright,
+        'f-lastmodby':   m.lastModBy,
+        'f-producer':    m.producer,
+        'f-description': m.description,
     };
     for (const [id, val] of Object.entries(textMap)) {
         if (val) document.getElementById(id).value = val;
     }
 
-    // Status dropdown
     if (m.status) {
         const sel = document.getElementById('f-status');
         for (const opt of sel.options) {
@@ -761,29 +850,25 @@ function populateForm(m) {
         }
     }
 
-    // Category dropdown
     if (m.category) {
         const sel = document.getElementById('f-category');
         for (const opt of sel.options) {
             if (opt.value.toLowerCase() === m.category.toLowerCase()) { sel.value = opt.value; break; }
         }
-        // If no match, allow writing it in manually — but since it's a select, skip
     }
 
-    // Date (ISO 8601 → YYYY-MM-DD for <input type="date">)
     if (m.created) {
         try {
             const d = new Date(m.created);
-            if (!isNaN(d)) {
-                document.getElementById('f-created').value = d.toISOString().slice(0, 10);
-            }
+            if (!isNaN(d)) document.getElementById('f-created').value = d.toISOString().slice(0, 10);
         } catch {}
     }
 }
 
 function clearForm() {
-    ['f-title','f-author','f-company','f-manager',
-     'f-keywords','f-revision','f-copyright'].forEach(id => {
+    ['f-title','f-subject','f-author','f-company','f-manager',
+     'f-keywords','f-revision','f-copyright','f-lastmodby',
+     'f-producer','f-description'].forEach(id => {
         document.getElementById(id).value = '';
     });
     document.getElementById('f-status').value   = '';
@@ -793,22 +878,26 @@ function clearForm() {
 
 function getFormValues() {
     return {
-        title:     document.getElementById('f-title').value,
-        author:    document.getElementById('f-author').value,
-        company:   document.getElementById('f-company').value,
-        manager:   document.getElementById('f-manager').value,
-        keywords:  document.getElementById('f-keywords').value,
-        created:   document.getElementById('f-created').value,
-        category:  document.getElementById('f-category').value,
-        revision:  document.getElementById('f-revision').value,
-        status:    document.getElementById('f-status').value,
-        copyright: document.getElementById('f-copyright').value,
+        title:       document.getElementById('f-title').value,
+        subject:     document.getElementById('f-subject').value,
+        author:      document.getElementById('f-author').value,
+        company:     document.getElementById('f-company').value,
+        manager:     document.getElementById('f-manager').value,
+        keywords:    document.getElementById('f-keywords').value,
+        created:     document.getElementById('f-created').value,
+        category:    document.getElementById('f-category').value,
+        revision:    document.getElementById('f-revision').value,
+        status:      document.getElementById('f-status').value,
+        copyright:   document.getElementById('f-copyright').value,
+        lastModBy:   document.getElementById('f-lastmodby').value,
+        producer:    document.getElementById('f-producer').value,
+        description: document.getElementById('f-description').value,
     };
 }
 
 // ── Template ────────────────────────────────────────────────
-const templateSel  = document.getElementById('template-select');
-const btnRename    = document.getElementById('btn-rename');
+const templateSel = document.getElementById('template-select');
+const btnRename   = document.getElementById('btn-rename');
 
 templateSel.addEventListener('change', function () {
     const t = TEMPLATES[this.value];
@@ -874,7 +963,7 @@ async function doSave(asNew) {
     if (asNew) {
         const base    = filename.replace(/\.[^.]+$/, '');
         const ext     = filename.split('.').pop();
-        const entered = prompt('Export as:', `${base}_edited.${ext}`);
+        const entered = prompt('Export as:', `${base}_cleaned.${ext}`);
         if (!entered) return;
         filename = entered;
     }
@@ -885,9 +974,11 @@ async function doSave(asNew) {
     try {
         if (['docx','pptx','xlsx'].includes(fileType) && currentZip) {
             blob = await writeOOXML(currentZip, values);
+        } else if (fileType === 'pdf' && pdfBytes) {
+            blob = await writePDF(pdfBytes, values);
         } else {
-            blob = currentFile;
-            showToast('PDF metadata editing requires pdf-lib — downloading original.');
+            showToast('No file loaded — please upload a file first.');
+            return;
         }
         triggerDownload(blob, filename);
         showToast(`✓ Saved as "${filename}"`);
@@ -902,13 +993,16 @@ async function writeOOXML(zip, v) {
     const coreFile = zip.file('docProps/core.xml');
     if (coreFile) {
         let xml = await coreFile.async('text');
-        xml = patchXml(xml, 'title',         v.title);
-        xml = patchXml(xml, 'creator',       v.author);
-        xml = patchXml(xml, 'keywords',      v.keywords);
-        xml = patchXml(xml, 'category',      v.category);
-        xml = patchXml(xml, 'revision',      v.revision);
-        xml = patchXml(xml, 'contentStatus', v.status);
-        xml = patchXml(xml, 'rights',        v.copyright);
+        xml = patchXml(xml, 'title',          v.title);
+        xml = patchXml(xml, 'subject',        v.subject);
+        xml = patchXml(xml, 'creator',        v.author);
+        xml = patchXml(xml, 'keywords',       v.keywords);
+        xml = patchXml(xml, 'description',    v.description);
+        xml = patchXml(xml, 'category',       v.category);
+        xml = patchXml(xml, 'revision',       v.revision);
+        xml = patchXml(xml, 'contentStatus',  v.status);
+        xml = patchXml(xml, 'rights',         v.copyright);
+        xml = patchXml(xml, 'lastModifiedBy', v.lastModBy);
         if (v.created) {
             try {
                 xml = patchXml(xml, 'created',  new Date(v.created).toISOString());
@@ -921,8 +1015,9 @@ async function writeOOXML(zip, v) {
     const appFile = zip.file('docProps/app.xml');
     if (appFile) {
         let xml = await appFile.async('text');
-        xml = patchXml(xml, 'Company', v.company);
-        xml = patchXml(xml, 'Manager', v.manager);
+        xml = patchXml(xml, 'Company',     v.company);
+        xml = patchXml(xml, 'Manager',     v.manager);
+        xml = patchXml(xml, 'Application', v.producer);
         zip.file('docProps/app.xml', xml);
     }
 
@@ -945,6 +1040,26 @@ function patchXml(xml, localName, value) {
         `(<(?:[\\w.-]+:)?${localName}(?:\\s[^>]*)?>)[^<]*(</(?:[\\w.-]+:)?${localName}>)`, 'i'
     );
     return xml.replace(rx, `$1${safe}$2`);
+}
+
+// ── PDF write via pdf-lib ────────────────────────────────────
+async function writePDF(bytes, v) {
+    const { PDFDocument } = PDFLib;
+    const pdfDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+
+    if (v.title)       pdfDoc.setTitle(v.title);
+    if (v.author)      pdfDoc.setAuthor(v.author);
+    if (v.subject)     pdfDoc.setSubject(v.subject);
+    if (v.keywords)    pdfDoc.setKeywords(v.keywords.split(',').map(k => k.trim()).filter(Boolean));
+    if (v.producer)    pdfDoc.setProducer(v.producer);
+    if (v.description) pdfDoc.setSubject(v.description); // no separate Description in PDF spec; Subject is closest
+    if (v.created) {
+        try { pdfDoc.setCreationDate(new Date(v.created)); } catch {}
+    }
+    pdfDoc.setModificationDate(new Date());
+
+    const saved = await pdfDoc.save();
+    return new Blob([saved], { type: 'application/pdf' });
 }
 
 function triggerDownload(blob, filename) {
