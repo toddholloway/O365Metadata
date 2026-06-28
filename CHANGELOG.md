@@ -4,6 +4,19 @@ All notable changes to Metadata Cleaner & Editor are documented here.
 
 ---
 
+## [v0_3] — 2026-06-28
+
+### Changed
+- **Bundled both libraries locally** — JSZip and pdf-lib are now served from `vendor/` instead of external CDNs. The app now works fully offline from the first visit with no internet connection required at any point.
+- Added `vendor/LICENSES.md` preserving the MIT copyright notices for both bundled libraries (JSZip © Stuart Knightley et al.; pdf-lib © Andrew Duncanu).
+- Added inline attribution comments in `index.html` next to each `<script>` tag.
+- Version label updated to v0_3 throughout.
+
+### Why
+CDN-hosted scripts require an internet connection on first load. Bundling eliminates that dependency while remaining fully MIT-compatible — both libraries are MIT licensed, matching this project.
+
+---
+
 ## [v0_2] — 2026-06-28
 
 ### Added
