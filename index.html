@@ -1,0 +1,970 @@
+<!--
+  Copilot Agent: Metadata Cleaner & Editor
+  Copyright (c) 2026 Todd Holloway
+
+  MIT License
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Copilot Agent – Metadata Cleaner &amp; Editor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #e6e6f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem 3rem;
+        }
+
+        /* ── Card ─────────────────────────────────────────── */
+        .card {
+            width: 100%;
+            max-width: 920px;
+            background: white;
+            border: 2.5px solid #5c6bc0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 24px rgba(63,81,181,0.13);
+        }
+
+        /* ── Header ──────────────────────────────────────── */
+        .app-header {
+            padding: 1.25rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1.5px solid #e8e8f4;
+            background: white;
+        }
+
+        .header-text h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #111827;
+            line-height: 1.2;
+        }
+
+        .header-text p {
+            font-size: 13px;
+            color: #6b7280;
+            margin-top: 3px;
+        }
+
+        /* Robot avatar SVG */
+        .avatar { width: 78px; height: 78px; flex-shrink: 0; }
+
+        /* ── Upload Zone ────────────────────────────────── */
+        .upload-zone {
+            margin: 1.5rem 2rem 1.25rem;
+            border: 2px dashed #9fa8da;
+            border-radius: 8px;
+            padding: 1.75rem 1.5rem;
+            text-align: center;
+            background: #f5f5fc;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+            user-select: none;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.drag-over {
+            border-color: #3f51b5;
+            background: #ebebfa;
+        }
+
+        .upload-cloud {
+            color: #3f51b5;
+            display: flex;
+            justify-content: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .upload-label {
+            font-size: 15px;
+            margin-bottom: 0.875rem;
+        }
+
+        .upload-label .drag-text { color: #3f51b5; }
+        .upload-label .or-text   { color: #6b7280; }
+        .upload-label .click-text { color: #3f51b5; font-weight: 700; }
+
+        .format-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.625rem;
+            flex-wrap: wrap;
+        }
+
+        .format-label { font-size: 13px; color: #6b7280; }
+
+        /* Office-style icon badges */
+        .office-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 5px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            font-weight: 900;
+            color: white;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        .icon-word  { background: #2b579a; }
+        .icon-ppt   { background: #c43e1c; }
+        .icon-excel { background: #217346; }
+
+        .pdf-badge {
+            padding: 3px 9px;
+            border: 1.5px solid #555;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #444;
+            letter-spacing: 0.04em;
+        }
+
+        /* ── Template Row ────────────────────────────────── */
+        .template-row {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+            margin: 0 2rem 1.5rem;
+            padding: 0.625rem 1rem;
+            background: #f0f0fa;
+            border: 1px solid #c5cae9;
+            border-radius: 6px;
+        }
+
+        .template-row label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+            white-space: nowrap;
+        }
+
+        .template-select {
+            flex: 1;
+            padding: 0.4rem 0.75rem;
+            border: 1px solid #c5cae9;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #111827;
+            background: white;
+            cursor: pointer;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .template-select:focus { border-color: #5c6bc0; }
+
+        .template-hint { font-size: 12px; color: #9fa8da; }
+
+        .btn-rename {
+            background: none;
+            border: 1px solid #c5cae9;
+            border-radius: 4px;
+            padding: 0.3rem 0.5rem;
+            font-size: 13px;
+            cursor: pointer;
+            color: #5c6bc0;
+            transition: background 0.15s;
+            flex-shrink: 0;
+        }
+
+        .btn-rename:hover { background: #e8eaf6; }
+
+        /* ── Form section ────────────────────────────────── */
+        .form-section { padding: 0 2rem 0.75rem; }
+
+        .form-heading {
+            font-size: 20px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 0.25rem;
+        }
+
+        .form-sub { font-size: 13px; color: #6b7280; margin-bottom: 1.25rem; }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.125rem 2.25rem;
+        }
+
+        .form-field label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 0.375rem;
+        }
+
+        .form-field input,
+        .form-field select {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #111827;
+            background: white;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        .form-field input:focus,
+        .form-field select:focus {
+            border-color: #5c6bc0;
+            box-shadow: 0 0 0 3px rgba(92,107,192,0.12);
+        }
+
+        .form-field input::placeholder { color: #c4c4cc; }
+
+        /* ── Action row ──────────────────────────────────── */
+        .action-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.25rem 2rem 1.5rem;
+            margin-top: 0.5rem;
+            border-top: 1px solid #f0f0f8;
+        }
+
+        .btn-clear {
+            padding: 0.6rem 1.375rem;
+            background: #fce4ec;
+            color: #c2185b;
+            border: 1px solid #f48fb1;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.15s, border-color 0.15s;
+        }
+
+        .btn-clear:hover { background: #f8bbd0; border-color: #e91e63; }
+
+        /* Split save button */
+        .save-group { display: flex; position: relative; }
+
+        .btn-save-main {
+            padding: 0.6rem 1.375rem;
+            background: #1a237e;
+            color: white;
+            border: none;
+            border-radius: 5px 0 0 5px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-save-main:hover { background: #283593; }
+
+        .btn-save-arrow {
+            padding: 0.6rem 0.7rem;
+            background: #283593;
+            color: white;
+            border: none;
+            border-left: 1px solid rgba(255,255,255,0.2);
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background 0.15s;
+        }
+
+        .btn-save-arrow:hover { background: #303f9f; }
+
+        .save-dropdown {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 6px);
+            right: 0;
+            background: white;
+            border: 1px solid #c5cae9;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(63,81,181,0.15);
+            min-width: 230px;
+            z-index: 100;
+            overflow: hidden;
+        }
+
+        .save-dropdown.open { display: block; }
+
+        .dropdown-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            font-size: 14px;
+            color: #111827;
+            cursor: pointer;
+            background: none;
+            border: none;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+            transition: background 0.1s;
+        }
+
+        .dropdown-item:hover { background: #f5f5fc; }
+        .dropdown-item + .dropdown-item { border-top: 1px solid #f0f0f8; }
+
+        .di-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+        .di-title { font-weight: 600; line-height: 1.3; font-size: 13px; }
+        .di-sub   { font-size: 11px; color: #6b7280; margin-top: 1px; }
+
+        /* ── Toast ───────────────────────────────────────── */
+        .toast {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            background: #1a237e;
+            color: white;
+            padding: 0.75rem 1.125rem;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            box-shadow: 0 4px 16px rgba(26,35,126,0.3);
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 0.25s, transform 0.25s;
+            z-index: 9999;
+            max-width: 320px;
+        }
+
+        .toast.hidden { opacity: 0; transform: translateY(8px); pointer-events: none; }
+
+        /* ── Responsive ──────────────────────────────────── */
+        @media (max-width: 620px) {
+            .app-header { padding: 1rem 1.25rem; }
+            .upload-zone { margin: 1rem 1.25rem; }
+            .template-row { margin: 0 1.25rem 1.25rem; flex-wrap: wrap; }
+            .form-section { padding: 0 1.25rem 0.75rem; }
+            .form-grid { grid-template-columns: 1fr; gap: 0.875rem; }
+            .action-row { padding: 1rem 1.25rem 1.25rem; }
+            .template-hint { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="toast" class="toast hidden"></div>
+
+<div class="card">
+
+    <!-- ── Header ───────────────────────────────────────── -->
+    <header class="app-header">
+        <div class="header-text">
+            <h1>Copilot Agent</h1>
+            <p>Metadata Cleaner &amp; Editor</p>
+        </div>
+        <!-- Robot avatar -->
+        <svg class="avatar" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <radialGradient id="helmetGrad" cx="38%" cy="30%" r="65%">
+                    <stop offset="0%" stop-color="#e8eaf6"/>
+                    <stop offset="100%" stop-color="#9fa8da"/>
+                </radialGradient>
+                <radialGradient id="visorGrad" cx="50%" cy="30%" r="70%">
+                    <stop offset="0%" stop-color="#1565c0"/>
+                    <stop offset="100%" stop-color="#0d2b6e"/>
+                </radialGradient>
+            </defs>
+            <!-- Neck -->
+            <rect x="42" y="76" width="16" height="10" rx="4" fill="#7986cb"/>
+            <!-- Helmet sphere -->
+            <circle cx="50" cy="50" r="36" fill="url(#helmetGrad)" stroke="#9fa8da" stroke-width="0.5"/>
+            <!-- Face visor -->
+            <rect x="22" y="32" width="56" height="36" rx="10" fill="url(#visorGrad)"/>
+            <!-- Eye whites -->
+            <circle cx="37" cy="46" r="8" fill="white"/>
+            <circle cx="63" cy="46" r="8" fill="white"/>
+            <!-- Irises -->
+            <circle cx="37" cy="46" r="5" fill="#00e5ff"/>
+            <circle cx="63" cy="46" r="5" fill="#00e5ff"/>
+            <!-- Pupils -->
+            <circle cx="38" cy="45" r="2.5" fill="#005b7f"/>
+            <circle cx="64" cy="45" r="2.5" fill="#005b7f"/>
+            <!-- Eye shine -->
+            <circle cx="40" cy="43" r="1.5" fill="white" opacity="0.9"/>
+            <circle cx="66" cy="43" r="1.5" fill="white" opacity="0.9"/>
+            <!-- Smile -->
+            <path d="M38 60 Q50 68 62 60" stroke="#80deea" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <!-- Left earpiece -->
+            <rect x="8" y="40" width="12" height="20" rx="6" fill="#3949ab"/>
+            <!-- Right earpiece -->
+            <rect x="80" y="40" width="12" height="20" rx="6" fill="#3949ab"/>
+            <!-- Mic boom -->
+            <path d="M92 56 Q94 68 83 72" stroke="#3949ab" stroke-width="3" stroke-linecap="round" fill="none"/>
+            <circle cx="82" cy="73" r="4" fill="#5c6bc0"/>
+            <!-- Antenna -->
+            <line x1="50" y1="14" x2="50" y2="22" stroke="#7986cb" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="50" cy="11" r="5" fill="#5c6bc0"/>
+            <circle cx="50" cy="11" r="2.5" fill="#80cbc4"/>
+        </svg>
+    </header>
+
+    <!-- ── Upload Zone ───────────────────────────────────── -->
+    <div class="upload-zone" id="upload-zone">
+        <input type="file" id="file-input" accept=".docx,.pptx,.xlsx,.pdf" style="display:none">
+
+        <div class="upload-cloud">
+            <!-- Filled cloud-upload icon -->
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 .34.03.67.08 1H5a4 4 0 000 8h14a4 4 0 000-8h-.08c.05-.33.08-.66.08-1 0-3.87-3.13-7-7-7z"
+                      fill="#5c6bc0" opacity="0.25"/>
+                <path d="M17 9.17A6 6 0 0012 4a6 6 0 00-5.65 4 4 4 0 00.65 7.95V16h10v-.05A4 4 0 0017 9.17z"
+                      fill="#3f51b5" opacity="0.3"/>
+                <polyline points="12 18 12 11" stroke="#3f51b5" stroke-width="2" stroke-linecap="round"/>
+                <polyline points="9 13 12 10 15 13" stroke="#3f51b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <!-- Cloud body filled -->
+                <path d="M19.35 10.04A7.49 7.49 0 0012 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 000 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"
+                      fill="#5c6bc0" opacity="0.85"/>
+                <polyline points="16 16 12 11 8 16" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="12" y1="11" x2="12" y2="21" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+        </div>
+
+        <p class="upload-label">
+            <span class="drag-text">Drag &amp; Drop your files here </span>
+            <span class="or-text">or </span>
+            <span class="click-text">Click to Upload</span>
+        </p>
+
+        <div class="format-row">
+            <span class="format-label">Supported Formats:</span>
+            <span class="office-icon icon-word">W</span>
+            <span class="office-icon icon-ppt">P</span>
+            <span class="office-icon icon-excel">X</span>
+            <span class="pdf-badge">PDF</span>
+        </div>
+    </div>
+
+    <!-- ── Template selector ─────────────────────────────── -->
+    <div class="template-row">
+        <label for="template-select">Apply Template</label>
+        <select id="template-select" class="template-select">
+            <option value="">— Select a template to auto-fill fields —</option>
+            <option value="t1">Template 1</option>
+            <option value="t2">Template 2</option>
+        </select>
+        <button class="btn-rename" id="btn-rename" title="Rename this template" style="display:none">✏</button>
+        <span class="template-hint">Overwrites matching fields</span>
+    </div>
+
+    <!-- ── Form ──────────────────────────────────────────── -->
+    <div class="form-section">
+        <h2 class="form-heading">Edit Document Metadata</h2>
+        <p class="form-sub">Review and update the document properties below.</p>
+
+        <div class="form-grid">
+            <!-- Row 1 -->
+            <div class="form-field">
+                <label for="f-title">Title:</label>
+                <input type="text" id="f-title" placeholder="Document title">
+            </div>
+            <div class="form-field">
+                <label for="f-keywords">Keywords:</label>
+                <input type="text" id="f-keywords" placeholder="keyword1, keyword2">
+            </div>
+
+            <!-- Row 2 -->
+            <div class="form-field">
+                <label for="f-author">Author:</label>
+                <input type="text" id="f-author" placeholder="Author name">
+            </div>
+            <div class="form-field">
+                <label for="f-created">Created Date:</label>
+                <input type="date" id="f-created">
+            </div>
+
+            <!-- Row 3 -->
+            <div class="form-field">
+                <label for="f-company">Company:</label>
+                <input type="text" id="f-company" placeholder="Organization name">
+            </div>
+            <div class="form-field">
+                <label for="f-category">Category:</label>
+                <select id="f-category">
+                    <option value="">— Select —</option>
+                    <option value="Business">Business</option>
+                    <option value="Confidential">Confidential</option>
+                    <option value="External">External</option>
+                    <option value="Internal">Internal</option>
+                    <option value="Legal">Legal</option>
+                    <option value="Public">Public</option>
+                    <option value="Technical">Technical</option>
+                </select>
+            </div>
+
+            <!-- Row 4 -->
+            <div class="form-field">
+                <label for="f-manager">Manager:</label>
+                <input type="text" id="f-manager" placeholder="Manager name">
+            </div>
+            <div class="form-field">
+                <label for="f-revision">Revision Number:</label>
+                <input type="text" id="f-revision" placeholder="e.g. 3">
+            </div>
+
+            <!-- Row 5 -->
+            <div class="form-field">
+                <label for="f-status">Status:</label>
+                <select id="f-status">
+                    <option value="">— Select —</option>
+                    <option value="Draft">Draft</option>
+                    <option value="In Review">In Review</option>
+                    <option value="Final">Final</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Archived">Archived</option>
+                </select>
+            </div>
+            <div class="form-field">
+                <label for="f-copyright">Copyright:</label>
+                <input type="text" id="f-copyright" placeholder="© 2026 Company Name">
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Action row ─────────────────────────────────────── -->
+    <div class="action-row">
+        <button class="btn-clear" id="btn-clear">Clear Metadata</button>
+
+        <div class="save-group" id="save-group">
+            <button class="btn-save-main" id="btn-save">
+                Save Changes
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"/>
+                </svg>
+            </button>
+            <button class="btn-save-arrow" id="btn-save-arrow" title="More options">▾</button>
+            <div class="save-dropdown" id="save-menu">
+                <button class="dropdown-item" data-action="overwrite">
+                    <span class="di-icon">💾</span>
+                    <div>
+                        <div class="di-title">Download Modified File</div>
+                        <div class="di-sub">Keeps original filename</div>
+                    </div>
+                </button>
+                <button class="dropdown-item" data-action="export">
+                    <span class="di-icon">📤</span>
+                    <div>
+                        <div class="di-title">Export as New File…</div>
+                        <div class="di-sub">Choose a new filename</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div><!-- /card -->
+
+<p style="text-align:center;margin-top:1.25rem;font-size:11px;color:#9fa8da;letter-spacing:0.04em;">
+    Copilot Agent: Metadata Cleaner &amp; Editor &nbsp;·&nbsp; MIT License &nbsp;·&nbsp; Copyright &copy; 2026 Todd Holloway
+</p>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+let currentFile = null;
+let currentZip  = null;
+let fileType    = null;
+
+// ── Templates ──────────────────────────────────────────────
+const TEMPLATES = {
+    't1': { company: '', author: '', manager: '', copyright: '', status: 'Final',  category: 'Business'  },
+    't2': { company: '', author: '', manager: '', copyright: '', status: 'Draft',  category: 'Internal'  },
+};
+
+const FILE_META = {
+    docx: { icon: '📝', label: 'DOCX' },
+    pptx: { icon: '📊', label: 'PPTX' },
+    xlsx: { icon: '📋', label: 'XLSX' },
+    pdf:  { icon: '📄', label: 'PDF'  },
+};
+
+function formatSize(bytes) {
+    if (bytes < 1024)        return `${bytes} B`;
+    if (bytes < 1048576)     return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1048576).toFixed(1)} MB`;
+}
+
+// ── Upload Zone ─────────────────────────────────────────────
+const uploadZone = document.getElementById('upload-zone');
+const fileInput  = document.getElementById('file-input');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+
+uploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadZone.classList.add('drag-over');
+});
+
+uploadZone.addEventListener('dragleave', (e) => {
+    if (!uploadZone.contains(e.relatedTarget)) uploadZone.classList.remove('drag-over');
+});
+
+uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+});
+
+fileInput.addEventListener('change', (e) => {
+    if (e.target.files[0]) processFile(e.target.files[0]);
+    fileInput.value = '';
+});
+
+// ── File processing ─────────────────────────────────────────
+async function processFile(file) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['docx', 'pptx', 'xlsx', 'pdf'].includes(ext)) {
+        showToast('Unsupported format — please upload .docx, .pptx, .xlsx, or .pdf');
+        return;
+    }
+
+    currentFile = file;
+    fileType    = ext;
+
+    let metadata = {};
+    try {
+        if (['docx', 'pptx', 'xlsx'].includes(ext)) {
+            const result = await extractOOXML(file);
+            currentZip = result.zip;
+            metadata   = result.metadata;
+        } else {
+            metadata = await extractPDF(file);
+        }
+    } catch (err) {
+        console.warn('Metadata extraction failed:', err);
+        showToast('Could not read all metadata — fill in fields manually.');
+    }
+
+    clearForm();
+    populateForm(metadata);
+
+    const fm = FILE_META[ext] || FILE_META.pdf;
+    showToast(`✓ Loaded ${fm.label}: ${file.name} (${formatSize(file.size)})`);
+}
+
+// ── OOXML extraction ────────────────────────────────────────
+async function extractOOXML(file) {
+    const zip = await JSZip.loadAsync(file);
+    const metadata = {};
+
+    const coreFile = zip.file('docProps/core.xml');
+    if (coreFile) {
+        const doc = new DOMParser().parseFromString(await coreFile.async('text'), 'text/xml');
+        metadata.title     = xmlVal(doc, 'title');
+        metadata.author    = xmlVal(doc, 'creator');
+        metadata.keywords  = xmlVal(doc, 'keywords');
+        metadata.created   = xmlVal(doc, 'created');
+        metadata.category  = xmlVal(doc, 'category');
+        metadata.revision  = xmlVal(doc, 'revision');
+        metadata.status    = xmlVal(doc, 'contentStatus');
+        metadata.copyright = xmlVal(doc, 'rights');
+    }
+
+    const appFile = zip.file('docProps/app.xml');
+    if (appFile) {
+        const doc = new DOMParser().parseFromString(await appFile.async('text'), 'text/xml');
+        metadata.company = xmlVal(doc, 'Company');
+        metadata.manager = xmlVal(doc, 'Manager');
+    }
+
+    return { zip, metadata };
+}
+
+function xmlVal(doc, localName) {
+    for (const el of doc.getElementsByTagName('*')) {
+        if (el.localName === localName) return el.textContent.trim();
+    }
+    return '';
+}
+
+// ── PDF extraction (header scan) ────────────────────────────
+async function extractPDF(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target.result;
+            const grab = (rx) => { const m = text.match(rx); return m ? m[1] : ''; };
+            resolve({
+                title:    grab(/\/Title\s*\(([^)]*)\)/),
+                author:   grab(/\/Author\s*\(([^)]*)\)/) || grab(/\/Creator\s*\(([^)]*)\)/),
+                keywords: grab(/\/Keywords\s*\(([^)]*)\)/),
+                company:  grab(/\/Company\s*\(([^)]*)\)/),
+            });
+        };
+        reader.readAsText(file, 'latin1');
+    });
+}
+
+// ── Form helpers ────────────────────────────────────────────
+function populateForm(m) {
+    const textMap = {
+        'f-title':     m.title,
+        'f-author':    m.author,
+        'f-company':   m.company,
+        'f-manager':   m.manager,
+        'f-keywords':  m.keywords,
+        'f-revision':  m.revision,
+        'f-copyright': m.copyright,
+    };
+    for (const [id, val] of Object.entries(textMap)) {
+        if (val) document.getElementById(id).value = val;
+    }
+
+    // Status dropdown
+    if (m.status) {
+        const sel = document.getElementById('f-status');
+        for (const opt of sel.options) {
+            if (opt.value.toLowerCase() === m.status.toLowerCase()) { sel.value = opt.value; break; }
+        }
+    }
+
+    // Category dropdown
+    if (m.category) {
+        const sel = document.getElementById('f-category');
+        for (const opt of sel.options) {
+            if (opt.value.toLowerCase() === m.category.toLowerCase()) { sel.value = opt.value; break; }
+        }
+        // If no match, allow writing it in manually — but since it's a select, skip
+    }
+
+    // Date (ISO 8601 → YYYY-MM-DD for <input type="date">)
+    if (m.created) {
+        try {
+            const d = new Date(m.created);
+            if (!isNaN(d)) {
+                document.getElementById('f-created').value = d.toISOString().slice(0, 10);
+            }
+        } catch {}
+    }
+}
+
+function clearForm() {
+    ['f-title','f-author','f-company','f-manager',
+     'f-keywords','f-revision','f-copyright'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    document.getElementById('f-status').value   = '';
+    document.getElementById('f-category').value = '';
+    document.getElementById('f-created').value  = '';
+}
+
+function getFormValues() {
+    return {
+        title:     document.getElementById('f-title').value,
+        author:    document.getElementById('f-author').value,
+        company:   document.getElementById('f-company').value,
+        manager:   document.getElementById('f-manager').value,
+        keywords:  document.getElementById('f-keywords').value,
+        created:   document.getElementById('f-created').value,
+        category:  document.getElementById('f-category').value,
+        revision:  document.getElementById('f-revision').value,
+        status:    document.getElementById('f-status').value,
+        copyright: document.getElementById('f-copyright').value,
+    };
+}
+
+// ── Template ────────────────────────────────────────────────
+const templateSel  = document.getElementById('template-select');
+const btnRename    = document.getElementById('btn-rename');
+
+templateSel.addEventListener('change', function () {
+    const t = TEMPLATES[this.value];
+    btnRename.style.display = this.value ? 'inline-flex' : 'none';
+    if (!t) return;
+
+    const fieldMap = {
+        author: 'f-author', company: 'f-company', manager: 'f-manager',
+        copyright: 'f-copyright',
+    };
+    for (const [prop, id] of Object.entries(fieldMap)) {
+        if (prop in t) document.getElementById(id).value = t[prop];
+    }
+    if (t.status)   document.getElementById('f-status').value   = t.status;
+    if (t.category) document.getElementById('f-category').value = t.category;
+
+    showToast(`Template "${this.options[this.selectedIndex].text}" applied`);
+});
+
+btnRename.addEventListener('click', () => {
+    const opt = templateSel.options[templateSel.selectedIndex];
+    if (!opt || !opt.value) return;
+    const newName = prompt('Rename template:', opt.text);
+    if (newName && newName.trim()) {
+        opt.text = newName.trim();
+        showToast(`Renamed to "${newName.trim()}"`);
+    }
+});
+
+// ── Clear ────────────────────────────────────────────────────
+document.getElementById('btn-clear').addEventListener('click', () => {
+    clearForm();
+    document.getElementById('template-select').value = '';
+    showToast('All metadata fields cleared');
+});
+
+// ── Save ─────────────────────────────────────────────────────
+document.getElementById('btn-save').addEventListener('click', () => doSave(false));
+
+document.getElementById('btn-save-arrow').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('save-menu').classList.toggle('open');
+});
+
+document.querySelectorAll('#save-menu .dropdown-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.getElementById('save-menu').classList.remove('open');
+        doSave(btn.dataset.action === 'export');
+    });
+});
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#save-group')) document.getElementById('save-menu').classList.remove('open');
+});
+
+async function doSave(asNew) {
+    if (!currentFile) {
+        showToast('Upload a file first, then save changes.');
+        return;
+    }
+
+    let filename = currentFile.name;
+    if (asNew) {
+        const base    = filename.replace(/\.[^.]+$/, '');
+        const ext     = filename.split('.').pop();
+        const entered = prompt('Export as:', `${base}_edited.${ext}`);
+        if (!entered) return;
+        filename = entered;
+    }
+
+    const values = getFormValues();
+    let blob;
+
+    try {
+        if (['docx','pptx','xlsx'].includes(fileType) && currentZip) {
+            blob = await writeOOXML(currentZip, values);
+        } else {
+            blob = currentFile;
+            showToast('PDF metadata editing requires pdf-lib — downloading original.');
+        }
+        triggerDownload(blob, filename);
+        showToast(`✓ Saved as "${filename}"`);
+    } catch (err) {
+        console.error(err);
+        showToast('Save failed — check the browser console for details.');
+    }
+}
+
+// ── OOXML write ──────────────────────────────────────────────
+async function writeOOXML(zip, v) {
+    const coreFile = zip.file('docProps/core.xml');
+    if (coreFile) {
+        let xml = await coreFile.async('text');
+        xml = patchXml(xml, 'title',         v.title);
+        xml = patchXml(xml, 'creator',       v.author);
+        xml = patchXml(xml, 'keywords',      v.keywords);
+        xml = patchXml(xml, 'category',      v.category);
+        xml = patchXml(xml, 'revision',      v.revision);
+        xml = patchXml(xml, 'contentStatus', v.status);
+        xml = patchXml(xml, 'rights',        v.copyright);
+        if (v.created) {
+            try {
+                xml = patchXml(xml, 'created',  new Date(v.created).toISOString());
+                xml = patchXml(xml, 'modified', new Date().toISOString());
+            } catch {}
+        }
+        zip.file('docProps/core.xml', xml);
+    }
+
+    const appFile = zip.file('docProps/app.xml');
+    if (appFile) {
+        let xml = await appFile.async('text');
+        xml = patchXml(xml, 'Company', v.company);
+        xml = patchXml(xml, 'Manager', v.manager);
+        zip.file('docProps/app.xml', xml);
+    }
+
+    const mimeTypes = {
+        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    };
+
+    return zip.generateAsync({ type: 'blob', mimeType: mimeTypes[fileType] });
+}
+
+// Regex-based XML field patcher — namespace-agnostic, preserves original formatting.
+function patchXml(xml, localName, value) {
+    if (value === undefined) return xml;
+    const safe = String(value)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+    const rx = new RegExp(
+        `(<(?:[\\w.-]+:)?${localName}(?:\\s[^>]*)?>)[^<]*(</(?:[\\w.-]+:)?${localName}>)`, 'i'
+    );
+    return xml.replace(rx, `$1${safe}$2`);
+}
+
+function triggerDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a   = Object.assign(document.createElement('a'), { href: url, download: filename });
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
+}
+
+// ── Toast ────────────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg, ms = 3500) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.add('hidden'), ms);
+}
+</script>
+</body>
+</html>
